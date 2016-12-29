@@ -1,25 +1,24 @@
 package main
 
 import (
+	"fmt"
+	"github.com/nlopes/slack"
 	"github.com/spf13/viper"
 	"log"
-   "fmt"
-   "github.com/nlopes/slack"
 )
 
-
 func printUser(user slack.User) {
-   fmt.Printf("   id=%s\n", user.ID)
-   fmt.Printf("   name=%s\n", user.Name)
-   fmt.Printf("   real name=%s\n", user.RealName)
-   if user.IsBot == true {
-      fmt.Printf("   is a bot\n")
-   }
-   if user.Deleted == true {
-      fmt.Printf("   is a deactivated user\n")
-   }
-   // 'active'|'away'|''
-   fmt.Printf("   presence=%s\n", user.Presence)
+	fmt.Printf("   id=%s\n", user.ID)
+	fmt.Printf("   name=%s\n", user.Name)
+	fmt.Printf("   real name=%s\n", user.RealName)
+	if user.IsBot == true {
+		fmt.Printf("   is a bot\n")
+	}
+	if user.Deleted == true {
+		fmt.Printf("   is a deactivated user\n")
+	}
+	// 'active'|'away'|''
+	fmt.Printf("   presence=%s\n", user.Presence)
 }
 
 // type User struct {
@@ -56,22 +55,52 @@ func main() {
 
 	slackToken := viper.GetString("connection.token")
 
-   slackHandler := slack.New(slackToken)
+	slackHandler := slack.New(slackToken)
 
+	// GetUsers returns the list of users (with their detailed information)
+	// func (api *Client) GetUsers() ([]User, error)
+	// Equivalent to (users.list method)[https://api.slack.com/methods/users.list]
+	users, err := slackHandler.GetUsers()
+	if err != nil {
+		log.Println("Error: ", err)
+		return
+	}
 
+	for i, user := range users {
+		fmt.Printf("user[%d]\n", i)
+		printUser(user)
+	}
 
-   // GetUsers returns the list of users (with their detailed information)
-   // func (api *Client) GetUsers() ([]User, error)
-   // Equivalent to (users.list method)[https://api.slack.com/methods/users.list]
-   users, err := slackHandler.GetUsers()
-   if err != nil {
-      log.Println("Error: ", err)
-      return
-   }
+   // Test PostMessage
+	commands := map[string]string{
+		"top":          "See the top rank of user rating by a provided number of top spots.",
+		"bottom":       "See the bottom rank of user rating by a provided number of bottom spots.",
+		"help":         "See the available bot commands.",
+		"mean":         "See how the rating of the selected user looks like, comparing to the mean of all users.",
+		"mean of":      "See how the rating of the selected user looks like, comparing to the mean of all users.",
+		"top messages": "See the top ranking messages in the current channel."}
 
-   for i, user := range users {
-      fmt.Printf("user[%d]\n", i)
-      printUser(user)
-   }
+	fields := make([]slack.AttachmentField, 0)
+	for k, v := range commands {
+		fields = append(fields, slack.AttachmentField{
+			Title: "<bot> " + k,
+			Value: v,
+		})
+	}
 
+	params := slack.PostMessageParameters{}
+	attachment := slack.Attachment{
+		Pretext: "Command List",
+		Color:   "#A733FF",
+		Text:    "some text",
+		Fields:  fields,
+	}
+
+	params.Attachments = []slack.Attachment{attachment}
+	channelID, timestamp, err := slackHandler.PostMessage("#general", "Main text", params)
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return
+	}
+	fmt.Printf("Message successfully sent to channel %s at %s\n", channelID, timestamp)
 }
