@@ -49,7 +49,7 @@ func main() {
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		log.Println("Error: no configuration file not found")
+		log.Println("Error: no configuration file found")
 		return
 	}
 
